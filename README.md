@@ -216,168 +216,157 @@ Includes posters + your rating.
 
 ## ⭐ Ranked Watchlist
 
-Your entire watchlist is ranked using a **multi-factor taste model**, not just genres.
+Your entire watchlist is ranked using a full **multi-factor taste model**, enriched with TMDb data and your entire rating history.
 
-For each film on your watchlist, the backend considers:
+### What influences your ranking:
+- **Genre affinity** – how much you like its genres  
+- **Director affinity** – how much you like the directors’ other work  
+- **Writer affinity** – how much you like their screenwriters  
+- **Keyword affinity** – mood/theme/tone similarity using TMDb keywords  
+- **Country & region affinity** – how highly you rate films from similar film cultures  
+- **Decade affinity** – taste for specific eras (70s, 90s, 2010s, etc.)  
+- **Collection affinity** – franchise/universe you already enjoy  
+- **TMDb community rating** – normalized quality baseline  
 
-- **Genre affinity** – how much you tend to like its genres  
-- **Director affinity** – how highly you rate that director’s previous work  
-- **Writer affinity** – how highly you rate that writer/screenwriter’s work  
-- **Keyword / tone affinity** – how much you like its themes/moods (from TMDb keywords)  
-- **Country & region affinity** – whether it comes from film cultures you rate highly  
-- **Decade affinity** – how much you like films from that era (70s, 90s, 2010s, etc.)  
-- **Collection affinity** – if it’s part of a collection/franchise you’ve rated before  
-- **TMDb community rating** – global baseline quality signal  
+These are normalized (0–1), weighted, and turned into a **predictedScore** for every watchlist film.
 
-These factors are normalized to a 0–1 scale and blended into a single **predictedScore**.
-The UI still shows:
-
+### UI includes:
 - Poster  
-- Title  
+- Title + year  
 - Genres  
 - TMDb rating  
-- **User genre score** (your genre-based taste for this film)  
-- **Model score** (multifactor score)  
-- **Match %** (with colored progress bar)  
-- Rank number in your watchlist  
----
+- User-genre score  
+- Multifactor model score  
+- Match percentage (color-coded bar)  
+- Rank number  
 
-## 7️⃣ API Endpoints
+## 7️⃣ API Endpoints (Full CRUD)
 
-| Route | Description |
-|-------|-------------|
-| `/api/ratings` | Ratings data (raw) |
-| `/api/watchlist` | Watchlist after removing rewatches |
-| `/api/overlap` | Detailed rewatch list |
-| `/api/genre-profile` | Full taste model |
-| `/api/genre-titles/:genreId` | All rated films in a specific genre |
-| `/api/recommendations` | Ranked watchlist |
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/ratings` | GET | Raw ratings list |
+| `/api/watchlist` | GET | Watchlist with rewatches removed |
+| `/api/overlap` | GET | Detailed rewatch list |
+| `/api/genre-profile` | GET | Full multi-dimensional taste model |
+| `/api/genre-titles/:id` | GET | Rated films filtered by a genre |
+| `/api/recommendations` | GET | Ranked watchlist |
+| `/api/rewatch-ranking` | GET | Ranked rewatches |
+| `/api/mark-watched` | POST | Remove from watchlist → add/update rating |
+| `/api/add-rating` | POST | Add a manual rating (with duplicate detection) |
+| `/api/add-to-watchlist` | POST | Add to watchlist (rewatch detection built-in) |
 
 ---
 
 ## 8️⃣ Cache System Explained
 
-The server auto-creates:
+The server persists data into:
 
+```
 cache/
-tmdb_cache.json
-derived_cache.json
+  tmdb_cache.json       # TMDb metadata for every film you’ve touched
+  derived_cache.json    # taste model + recommendations + rewatch ranking
+```
 
+### What this means:
+- First run → slow (lots of TMDb calls)
+- Every later run → instant  
+- Rankings, genre profile, rewatches, everything loads from disk
 
-Delete the cache **anytime you update the CSV files**:
+### When to delete cache:
+- You updated your Letterboxd CSVs  
+- You changed the taste model algorithm  
+- You want a clean rebuild  
 
-### macOS / Linux
+Delete with:
+
+**macOS / Linux**
+```
 rm -rf cache
+```
 
-
-### Windows PowerShell
+**Windows PowerShell**
+```
 Remove-Item cache -Recurse -Force
+```
 
-
-Then: 
+Then restart:
+```
 node server.js
-
+```
 
 ---
 
 ## 🔍 Taste Model Algorithm (Final Summary)
 
-The recommender is no longer “just genres”. It builds a **multi-dimensional taste profile** from your ratings and applies it to each film in your watchlist.
+Taste Matcher builds a **multi-dimensional taste vector** from your Letterboxd ratings, and applies it to every film in your watchlist.
 
-### 1. Input data
-
-From **ratings.csv**:
-
+### 1. Data Inputs
+From `ratings.csv` and `watchlist.csv`:
 - Title, year
 - Your rating (0–5)
 - Letterboxd URL
+- Rewatch detection via URL matching
 
-From **watchlist.csv**:
+### 2. TMDb Metadata (enriched & cached)
+For every film (ratings + watchlist):
+- Genres
+- Directors / Writers
+- Production countries → Regions (Europe, Asia, NA, etc.)
+- Release year → Decade (1980s, 2010s…)
+- Keywords (themes, tone, mood)
+- Collection ID & name (sagas, franchises)
+- vote_average (community baseline)
 
-- Title, year
-- Letterboxd URL
+### 3. Taste Profiles (averages)
+From all your rated films, the backend builds:
 
-### 2. Rewatch detection
+```
+genreProfile[genreId]
+directorProfile[name]
+writerProfile[name]
+countryProfile["US"/"JP"/etc]
+regionProfile["Asia"/"Europe"]
+decadeProfile[1970, 1980...]
+keywordProfile["surrealism", "slow-burn"...]
+collectionProfile[id]
+```
 
-- Match films by **Letterboxd URL**
-- If a film appears in **both** ratings & watchlist:
-  - Treat it as a **rewatch**
-  - Use its rating to learn your taste
-  - Remove it from the watchlist ranking
+Each value = **average rating you give that factor** (Bayesian-smoothed later).
 
-### 3. TMDb metadata enrichment
+### 4. Film-Specific Affinity (0–1)
+For each watchlist film, we compute:
 
-For every rated and watchlist title, the backend fetches from TMDb:
+- genreAffinity  
+- directorAffinity  
+- writerAffinity  
+- keywordAffinity  
+- countryRegionAffinity  
+- decadeAffinity  
+- collectionAffinity  
+- tmdbScoreNorm  
 
-- **Genres**
-- **Production countries** → mapped to **regions** (Europe, Asia, etc.)
-- **Release year** → mapped to **decade** (1970s, 2010s, etc.)
-- **Belongs-to-collection** (franchises / sagas)
-- **Credits (crew)**:
-  - Directors
-  - Writers / screenwriters
-- **Keywords** (mood/tone/themes)
-- **vote_average** (TMDb rating)
+### 5. Final Weighted Score
+```
+predictedScore =
+  0.15 * genreAffinity +
+  0.20 * directorAffinity +
+  0.10 * writerAffinity +
+  0.20 * keywordAffinity +
+  0.10 * countryRegionAffinity +
+  0.05 * decadeAffinity +
+  0.05 * collectionAffinity +
+  0.15 * tmdbScoreNorm
+```
 
-All of this is cached to disk so it only happens once.
+### 6. Ranking
+- Converted to percent match  
+- Sorted descending  
+- Rendered as your ranked watchlist  
 
-### 4. Building the user taste profiles
-
-From your rated films, the system computes average ratings for:
-
-- **Genres** → `genreProfile[genreId] = avg rating`
-- **Directors** → `directorProfile[name] = avg rating`
-- **Writers** → `writerProfile[name] = avg rating`
-- **Countries** → `countryProfile[countryCode] = avg rating`
-- **Regions** → `regionProfile[regionName] = avg rating`
-- **Decades** → `decadeProfile[1970, 1980, ...] = avg rating`
-- **Keywords** → `keywordProfile[keyword] = avg rating`
-- **Collections** → `collectionProfile[collectionId] = avg rating`
-
-This gives you a **taste vector** across multiple axes: who made it, where it’s from, when it’s from, what it feels like, and what “universe” it belongs to.
-
-### 5. Scoring each watchlist film
-
-For each film on your watchlist, the model computes **affinity scores** (0–1) for:
-
-- `genreAffinity` – how much you like its genres  
-- `directorAffinity` – how much you like its director(s)  
-- `writerAffinity` – how much you like its writer(s)  
-- `keywordAffinity` – how much you like its tone/themes (keywords)  
-- `countryRegionAffinity` – how much you like cinema from its country/region  
-- `decadeAffinity` – how much you like films from its decade  
-- `collectionAffinity` – how much you like its collection/franchise  
-- `tmdbScoreNorm` – TMDb’s vote_average normalized to 0–1  
-
-Internally, these start as average ratings on a 0–5 scale and are normalized to 0–1.
-
-### 6. Final prediction formula
-
-All affinities are combined into one **predictedScore**:
-
-> `predictedScore =`  
-> `  0.15 * genreAffinity`  
-> `+ 0.20 * directorAffinity`  
-> `+ 0.10 * writerAffinity`  
-> `+ 0.20 * keywordAffinity`  
-> `+ 0.10 * countryRegionAffinity`  
-> `+ 0.05 * decadeAffinity`  
-> `+ 0.05 * collectionAffinity`  
-> `+ 0.15 * tmdbScoreNorm`
-
-This weight choice emphasizes:
-
-- **who made it** (director/writer)  
-- **what it feels like** (keywords / tone)  
-- **what kind of film culture it comes from** (country/region/decade)  
-- **your overall genre preferences**  
-- **global consensus** (TMDb rating)
-
-### 7. Ranking & UI
-
-- `predictedScore` is used to rank the entire watchlist  
-- Scores are converted into a **percentage match** for the UI  
-- The API still exposes `userGenreScore` along with the new breakdown, so you can debug or explain the model easily in a viva
+Rewatches receive a separate ranking:
+```
+rewatchScore = 0.6*(userRatingNorm) + 0.4*(predictedScore)
+```
 
 
 ## 9️⃣ Quickstart Summary
