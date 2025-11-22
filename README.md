@@ -68,23 +68,27 @@ Everything runs **locally**, no frontend frameworks, no database.
 
 ## 2️⃣ Getting Your Letterboxd CSV Files
 
-Place both files inside:
+Place your CSVs inside:
 
-taste-matcher/data/
+`taste-matcher/data/`
 
-### 🔹 Export Ratings
-
+### 🔹 Ratings Export (unchanged)
 1. Letterboxd → **Settings → Data → Export**
-2. Download **Ratings CSV**
-3. Rename to: ratings.csv
+2. Download **ratings.csv**
+3. This will usually not be the case, but in case the name of the file is **not** `ratings.csv`, rename the file to `ratings.csv`.
 
+### 🔹 Watchlist Export (now fully universal)
+Taste Matcher accepts **any** Letterboxd-generated list CSV:
 
-### 🔹 Export Watchlist
+- “Watchlist → Export” (official format)
+- Any custom list export
+- Old/legacy list formats
 
-1. Open your **Watchlist**
-2. Click **Export**
-3. Rename to: watchlist.csv
+Just rename your chosen file to: `watchlist.csv`
 
+The .csv file can be any of your lists, it could also be your watchlist, but when you are putting the file into `taste-matcher/data`, **make sure** the .csv's file name is renamed to `watchlist.csv`.
+
+Then click **Reload Watchlist** inside the UI to apply your new list instantly.
 
 ---
 
@@ -187,50 +191,58 @@ These are **excluded from recommendations**, but their ratings are **included** 
 
 ---
 
-## ⭐ Interactive Features (Add / Edit / Update)
+## ⭐ Interactive Features (Live Editing, Instant Re-Ranking)
 
-Taste Matcher isn’t static — the UI allows you to update your library without touching CSV files.
+Taste Matcher now supports full **live mutation** of your data — no need to re-export CSVs unless you want to.
 
-### ✅ Add a new rating manually
-Enter:
+### ✅ Add a new rating (manual)
+Supports:
 - Title  
 - Year (optional)  
 - Letterboxd URL (optional)  
+- **TMDb URL or ID (recommended — auto-fills title & year)**  
 - Your rating  
 
-The server:
-- Prevents duplicates  
-- Fetches TMDb details if needed  
-- Updates your taste model  
-- Re-ranks watchlist + rewatches instantly  
+The backend:
+- Resolves TMDb metadata (only once — cached)
+- Prevents duplicate ratings
+- Updates the taste model
+- Re-ranks both watchlist + rewatches instantly  
+- Never re-calls TMDb for previously seen films
 
-### ✅ Add a film to your watchlist manually
-Enter:
+### ✅ Add a film to your watchlist (manual)
+Supports:
 - Title  
 - Year  
 - Letterboxd URL  
+- **TMDb URL/ID for instant, accurate metadata**
 
-The server:
-- Rejects duplicates  
-- If already rated → moves it to **rewatches**  
-- Otherwise adds to watchlist  
-- Updates ranking without extra TMDb calls (cached)
+The backend:
+- Rejects duplicates
+- If it’s already rated → automatically moves it to **rewatches**
+- Otherwise adds it to the watchlist
+- Updates ranking without extra TMDb calls
 
 ### ✅ Mark a film as “Watched”
-For films already in your watchlist:
+For any film in your watchlist:
 - Removes it from the watchlist  
 - Prompts for a rating  
 - Adds/updates the rating  
-- Moves film to **rewatch list**  
-- Recalculates everything live  
+- Moves it to the **rewatch list**  
+- Recomputes taste model + rankings instantly
 
-### ⚠️ TMDb calls run only once
-Thanks to caching:
-- Every movie’s metadata is fetched exactly once  
-- All future operations use local cache  
-- Ranking updates are instant, even with 1000+ films  
+### ✅ Ranked Rewatches (new feature)
+Rewatches are ranked by:
+ `rewatchScore = 0.6 * userRatingNorm + 0.4 * predictedScore `
+ 
+This gives you a **priority list of films you're most likely to enjoy rewatching**, blending:
+- your original rating  
+- your taste model  
+- film metadata  
 
-These interactive tools allow users to keep their data updated without re-exporting CSVs.
+### ⚡ TMDb metadata is fetched only once
+All metadata — genres, directors, writers, keywords, collections, etc. — is cached permanently.  
+Future operations reuse this cached data and never touch TMDb again.
 
 
 ## ⭐ Genre Profile (Interactive)
@@ -273,20 +285,30 @@ These are normalized (0–1), weighted, and turned into a **predictedScore** for
 - Match percentage (color-coded bar)  
 - Rank number  
 
-## 7️⃣ API Endpoints (Full CRUD)
+## 7️⃣ API Endpoints (Full CRUD + Hot Reloading)
 
 | Route | Method | Description |
 |-------|--------|-------------|
 | `/api/ratings` | GET | Raw ratings list |
-| `/api/watchlist` | GET | Watchlist with rewatches removed |
-| `/api/overlap` | GET | Detailed rewatch list |
-| `/api/genre-profile` | GET | Full multi-dimensional taste model |
-| `/api/genre-titles/:id` | GET | Rated films filtered by a genre |
+| `/api/watchlist` | GET | Watchlist after removing rewatches |
+| `/api/overlap` | GET | Full rewatch list (with metadata) |
+| `/api/genre-profile` | GET | Multi-dimensional taste model |
+| `/api/genre-titles/:id` | GET | Rated films filtered by genre |
 | `/api/recommendations` | GET | Ranked watchlist |
-| `/api/rewatch-ranking` | GET | Ranked rewatches |
+| `/api/rewatch-ranking` | GET | Ranked rewatch list |
 | `/api/mark-watched` | POST | Remove from watchlist → add/update rating |
-| `/api/add-rating` | POST | Add a manual rating (with duplicate detection) |
-| `/api/add-to-watchlist` | POST | Add to watchlist (rewatch detection built-in) |
+| `/api/add-rating` | POST | Add a rating (TMDb URL/ID supported) |
+| `/api/add-to-watchlist` | POST | Add a film to watchlist (rewatch-aware) |
+| `/api/reload-watchlist` | POST | **Reload only watchlist.csv** without recalculating ratings |
+
+### 🔁 Hot Reload Watchlist (New Feature)
+- Replace `data/watchlist.csv` with any Letterboxd export  
+- Press “Reload Watchlist” in the UI  
+- The backend:
+  - Parses *any* watchlist/list CSV format  
+  - Recomputes overlap (rewatches)  
+  - Keeps your ratings cache + taste model intact  
+  - Rebuilds recommendations instantly  
 
 ---
 
