@@ -200,6 +200,52 @@ These are **excluded from recommendations**, but their ratings are **included** 
 
 ---
 
+## ⭐ Interactive Features (Add / Edit / Update)
+
+Taste Matcher isn’t static — the UI allows you to update your library without touching CSV files.
+
+### ✅ Add a new rating manually
+Enter:
+- Title  
+- Year (optional)  
+- Letterboxd URL (optional)  
+- Your rating  
+
+The server:
+- Prevents duplicates  
+- Fetches TMDb details if needed  
+- Updates your taste model  
+- Re-ranks watchlist + rewatches instantly  
+
+### ✅ Add a film to your watchlist manually
+Enter:
+- Title  
+- Year  
+- Letterboxd URL  
+
+The server:
+- Rejects duplicates  
+- If already rated → moves it to **rewatches**  
+- Otherwise adds to watchlist  
+- Updates ranking without extra TMDb calls (cached)
+
+### ✅ Mark a film as “Watched”
+For films already in your watchlist:
+- Removes it from the watchlist  
+- Prompts for a rating  
+- Adds/updates the rating  
+- Moves film to **rewatch list**  
+- Recalculates everything live  
+
+### ⚠️ TMDb calls run only once
+Thanks to caching:
+- Every movie’s metadata is fetched exactly once  
+- All future operations use local cache  
+- Ranking updates are instant, even with 1000+ films  
+
+These interactive tools allow users to keep their data updated without re-exporting CSVs.
+
+
 ## ⭐ Genre Profile (Interactive)
 
 Shows:
