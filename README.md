@@ -86,7 +86,7 @@ Taste Matcher accepts **any** Letterboxd-generated list CSV:
 
 Just rename your chosen file to: `watchlist.csv`
 
-The .csv file can be any of your lists, it could also be your watchlist, but when you are putting the file into `taste-matcher/data`, **make sure** the .csv's file name is renamed to `watchlist.csv`.
+The .csv file can be any of your lists, it could also be your watchlist, but when you are putting the file into `taste-matcher/data/`, **make sure** the .csv's file name is renamed to `watchlist.csv`.
 
 Then click **Reload Watchlist** inside the UI to apply your new list instantly.
 
