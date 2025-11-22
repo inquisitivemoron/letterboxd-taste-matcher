@@ -37,7 +37,7 @@ Everything runs **locally**, no frontend frameworks, no database.
 
 ## 📁 Project Structure
 
-taste-matcher/
+`taste-matcher/
 ├─ data/
 │ ├─ ratings.csv # your ratings (Letterboxd export)
 │ └─ watchlist.csv # your watchlist (Letterboxd export)
@@ -48,7 +48,7 @@ taste-matcher/
 │ └─ derived_cache.json # taste model + recommendations cache
 ├─ server.js # backend logic
 ├─ .env # TMDb API key
-└─ package.json
+└─ package.json`
 
 
 > ⚠️ IMPORTANT:  
