@@ -115,7 +115,8 @@ cd taste-matcher
 ### 4.1 Install Node dependencies
 
 Run:
-npm install
+`npm init -y`
+`npm install express axios csv-parse dotenv`
 
 
 This will install everything listed inside `package.json`, including:
@@ -128,21 +129,7 @@ This will install everything listed inside `package.json`, including:
 If this completes without errors, you're good.
 
 ---
-
-
-### 4.2 If `npm install` fails or package.json is missing
-
-Run the following manually:
-
-npm init -y
-npm install express axios csv-parse dotenv
-
-
-This recreates a valid `package.json` and installs the required packages.
-
----
-
-### 4.3 Verify installation
+### 4.2 Verify installation
 
 Run:
 
