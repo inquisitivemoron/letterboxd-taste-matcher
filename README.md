@@ -1,3 +1,7 @@
+### Full Youtube Guide
+
+[![Watch the video](https://img.youtube.com/vi/gZmlPXZjs9s/0.jpg)](https://www.youtube.com/watch?v=gZmlPXZjs9s)
+
 # 🎬 Taste Matcher – Letterboxd + TMDb Watchlist Ranker
 
 Taste Matcher is a backend-first Node.js project that:
