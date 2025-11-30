@@ -43,16 +43,21 @@ Everything runs **locally**, no frontend frameworks, no database.
 
 `taste-matcher/
 ├─ data/
-│ ├─ ratings.csv # your ratings (Letterboxd export)
-│ └─ watchlist.csv # your watchlist (Letterboxd export)
+│  ├─ ratings.csv        # your ratings (Letterboxd export)
+│  └─ watchlist.csv      # your watchlist or any list export (renamed)
 ├─ public/
-│ └─ index.html # minimal UI
+│  └─ index.html         # UI (HTML + JS + CSS, or imports)
 ├─ cache/
-│ ├─ tmdb_cache.json # TMDb responses saved here
-│ └─ derived_cache.json # taste model + recommendations cache
-├─ server.js # backend logic
-├─ .env # TMDb API key
+│  ├─ tmdb_cache.json    # TMDb responses saved here
+│  ├─ derived_cache.json # taste model + recommendations + rewatch ranking
+│  ├─ hidden_rewatches.json # rewatches you chose to hide from ranking
+│  └─ data_state.json    # persisted ratings + watchlist + overlap state
+├─ exported/
+│  └─ ranked-watchlist-*.csv # Letterboxd-ready list exports
+├─ server.js             # backend logic
+├─ .env                  # TMDb API key + PORT
 └─ package.json`
+
 
 
 > ⚠️ IMPORTANT:  
@@ -279,6 +284,30 @@ Your entire watchlist is ranked using a full **multi-factor taste model**, enric
 
 These are normalized (0–1), weighted, and turned into a **predictedScore** for every watchlist film.
 
+## ⭐ Export Ranked Watchlist to Letterboxd
+
+Once your watchlist is ranked, you can export it as a **Letterboxd list CSV** that can be imported straight into a new List on Letterboxd.
+
+From the UI:
+
+- Click **“Export Ranked Watchlist → Letterboxd”**
+- You’ll be asked whether to **include rewatches** in the exported list:
+  - **Include rewatches** → watchlist items + rewatches are ranked together
+  - **Don’t include rewatches** → only watchlist items are exported
+- The export only affects the CSV file – the on-page UI stays the same.
+
+The backend creates:
+
+- `exported/ranked-watchlist-YYYY-MM-DDTHH-MM-SS.csv`
+
+in the project folder, using Letterboxd’s **“list export v7”** format, so you can:
+
+1. Create a new list on Letterboxd  
+2. Use their “Import” feature  
+3. Upload the generated CSV  
+4. Get your Taste Matcher ranking as a Letterboxd list in one go
+
+
 ### UI includes:
 - Poster  
 - Title + year  
@@ -296,14 +325,19 @@ These are normalized (0–1), weighted, and turned into a **predictedScore** for
 | `/api/ratings` | GET | Raw ratings list |
 | `/api/watchlist` | GET | Watchlist after removing rewatches |
 | `/api/overlap` | GET | Full rewatch list (with metadata) |
-| `/api/genre-profile` | GET | Multi-dimensional taste model |
+| `/api/genre-profile` | GET | Multi-dimensional taste model (genres, people, regions, decades, keywords, collections) |
 | `/api/genre-titles/:id` | GET | Rated films filtered by genre |
-| `/api/recommendations` | GET | Ranked watchlist |
+| `/api/recommendations` | GET | Ranked watchlist (multi-factor taste model) |
 | `/api/rewatch-ranking` | GET | Ranked rewatch list |
-| `/api/mark-watched` | POST | Remove from watchlist → add/update rating |
-| `/api/add-rating` | POST | Add a rating (TMDb URL/ID supported) |
-| `/api/add-to-watchlist` | POST | Add a film to watchlist (rewatch-aware) |
-| `/api/reload-watchlist` | POST | **Reload only watchlist.csv** without recalculating ratings |
+| `/api/mark-watched` | POST | Remove from watchlist → add/update rating, move to rewatches |
+| `/api/add-rating` | POST | Add a rating (TMDb URL/ID supported, duplicate-safe) |
+| `/api/add-to-watchlist` | POST | Add a film to watchlist (rewatch-aware, uses TMDb if provided) |
+| `/api/remove-from-watchlist` | POST | Permanently remove a title from the current watchlist snapshot |
+| `/api/hide-rewatch` | POST | Hide a rewatch so it never appears in ranked rewatches |
+| `/api/reload-watchlist` | POST | Reload only `watchlist.csv` (keeps ratings, recomputes overlap + rankings) |
+| `/api/reset-state` | POST | Reset ratings/watchlist/overlap back to the original CSV baseline |
+| `/api/export-ranked-watchlist` | GET | Export a ranked Letterboxd list CSV (optionally include rewatches) |
+
 
 ### 🔁 Hot Reload Watchlist (New Feature)
 - Replace `data/watchlist.csv` with any Letterboxd export  
@@ -322,8 +356,13 @@ The server persists data into:
 
 ```
 cache/
-  tmdb_cache.json       # TMDb metadata for every film you’ve touched
-  derived_cache.json    # taste model + recommendations + rewatch ranking
+tmdb_cache.json # TMDb metadata for every film you’ve touched
+derived_cache.json # taste model + recommendations + rewatch ranking
+hidden_rewatches.json # rewatches you chose to hide in the UI
+data_state.json # current ratings + watchlist + overlap (so restarts are instant)
+
+exported/
+ranked-watchlist-*.csv # Letterboxd-ready ranked list exports
 ```
 
 ### What this means:
@@ -334,7 +373,8 @@ cache/
 ### When to delete cache:
 - You updated your Letterboxd CSVs  
 - You changed the taste model algorithm  
-- You want a clean rebuild  
+- You want a clean rebuild
+- If you want to fully factory reset back to the raw CSVs without deleting files manually, you can also use the `Reset state to CSV` button in the UI (which calls `/api/reset-state`).
 
 Delete with:
 
