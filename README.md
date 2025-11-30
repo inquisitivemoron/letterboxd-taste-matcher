@@ -47,7 +47,11 @@ Everything runs **locally**, no frontend frameworks, no database.
 │  ├─ ratings.csv        # your ratings (Letterboxd export)
 │  └─ watchlist.csv      # your watchlist or any list export (renamed)
 ├─ public/
-│  └─ index.html         # UI (HTML + JS + CSS, or imports)
+│  ├─ css
+   │  └─ main.css
+   │  ├─ index.html         # UI (HTML + JS + CSS, or imports)
+│  ├─ js
+   │  └─ app.js
 ├─ cache/
 │  ├─ tmdb_cache.json    # TMDb responses saved here
 │  ├─ derived_cache.json # taste model + recommendations + rewatch ranking
@@ -281,7 +285,9 @@ Your entire watchlist is ranked using a full **multi-factor taste model**, enric
 - **Country & region affinity** – how highly you rate films from similar film cultures  
 - **Decade affinity** – taste for specific eras (70s, 90s, 2010s, etc.)  
 - **Collection affinity** – franchise/universe you already enjoy  
+- **Neighbour similarity** – how close this film is to your highest-rated films (k-NN over genres/keywords/era/regions/directors)  
 - **TMDb community rating** – normalized quality baseline  
+
 
 These are normalized (0–1), weighted, and turned into a **predictedScore** for every watchlist film.
 
@@ -444,19 +450,23 @@ For each watchlist film, we compute:
 - decadeAffinity  
 - collectionAffinity  
 - tmdbScoreNorm  
+- neighbourSimilarity – based on the top similar films in your rated history (using genres, keywords, decade, regions, directors)
+
 
 ### 5. Final Weighted Score
 ```
 predictedScore =
-  0.15 * genreAffinity +
-  0.20 * directorAffinity +
-  0.10 * writerAffinity +
-  0.20 * keywordAffinity +
-  0.10 * countryRegionAffinity +
+ 0.18 * genreAffinity +
+  0.10 * directorAffinity +
+  0.08 * writerAffinity +
+  0.22 * keywordAffinity +
+  0.07 * countryRegionAffinity +
   0.05 * decadeAffinity +
   0.05 * collectionAffinity +
-  0.15 * tmdbScoreNorm
+  0.15 * tmdbScoreNorm +
+  0.10 * neighbourSimilarity
 ```
+*(genreAffinity, directorAffinity, etc. are 0–1; neighbourSimilarity is the k-NN component based on films you’ve already rated.)*
 
 ### 6. Ranking
 - Converted to percent match  
