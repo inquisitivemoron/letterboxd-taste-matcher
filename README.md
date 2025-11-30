@@ -482,5 +482,5 @@ done. enjoy your personalized watchlist ranking ✨
 
 ## 📜 License
 
-MIT License — free for personal & educational use.
+MIT License – see [LICENSE](./LICENSE) for full details.
 
