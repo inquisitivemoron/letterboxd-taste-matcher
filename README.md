@@ -16,6 +16,7 @@ Taste Matcher is a backend-first Node.js project that:
   - decades / eras
   - keywords (mood / tone / themes)
   - collections (franchises / sagas)
+- Blends that with a **nearest-neighbour similarity layer** (films most similar to what you already love)
 - Predicts how much you'll like every film in your watchlist
 - Ranks the entire watchlist from **most-likely-to-enjoy → least**
 
